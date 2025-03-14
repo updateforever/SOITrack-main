@@ -1,8 +1,7 @@
 class EnvironmentSettings:
     def __init__(self):
-        self.workspace_dir = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/result'  # Base directory for saving network checkpoints.
-        # self.workspace_dir + '/pretrained_networks/'
-        self.lasot_dir = '/seu_nvme/datasets/open/lasot/LaSOT/zip'
+        self.workspace_dir = '/home/wyp/project/SOITrack-main/result'  # Base directory
+        self.lasot_dir = '/mnt/first/hushiyu/SOT/LaSOT/data'
         self.got10k_dir = '/mnt/first/hushiyu/SOT/GOT-10k/data'
         self.BioDrone_dir = '/mnt/second/hushiyu/UAV/BioDrone'
         self.trackingnet_dir = '/mnt/second/wangyipei/trackingnet'
@@ -13,7 +12,7 @@ class EnvironmentSettings:
         self.imagenetdet_dir = ''
         self.videocube_dir = '/mnt/first/hushiyu/SOT/VideoCube'
         #
-        self.lasotSOI_dir = '/seu_nvme/datasets/open/lasot/LaSOT/zip'  # '/mnt/second/wangyipei/SOI/data/lasot/data'
+        self.lasotSOI_dir = '/mnt/first/hushiyu/SOT/LaSOT/data'  # '/mnt/second/wangyipei/SOI/data/lasot/data'
         self.got10kSOI_dir = '/mnt/first/hushiyu/SOT/GOT-10k/data'  # '/mnt/second/wangyipei/SOI/GOT-10k/data'
         self.videocubeSOI_dir = '/mnt/first/hushiyu/SOT/VideoCube'
 
