@@ -1,0 +1,12 @@
+# 忽略所有的 .pyc 文件
+*.pyc
+
+# 忽略 Python 生成的缓存目录
+__pycache__/
+Base-Fulldata-300ep/ODTrack_ep0300.pth.tar
+.vscode/launch.json
+Base-Fulldata-300ep-20241212T093555Z-001.zip
+nips25/
+SOITrack_20250314143720.zip
+logs/
+logs/worker_0.log
