@@ -20,28 +20,34 @@ def local_env_settings():
     settings.got10k_path = '/mnt/first/hushiyu/SOT/GOT-10k/data'
     settings.got_packed_results_path = ''
     settings.got_reports_path = ''
-    settings.itb_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/itb'
-    settings.lasot_extension_subset_path_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/lasot_extension_subset'
-    settings.lasot_lmdb_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/lasot_lmdb'
+    settings.itb_path = '/home/wyp/project/SOITrack-main/data/itb'
+    settings.lasot_extension_subset_path_path = '/home/wyp/project/SOITrack-main/data/lasot_extension_subset'
+    settings.lasot_lmdb_path = '/home/wyp/project/SOITrack-main/data/lasot_lmdb'
     settings.lasot_path = '/mnt/first/hushiyu/SOT/LaSOT/data'
-    settings.network_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/output/test/networks'    # Where tracking networks are stored.
-    settings.nfs_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/nfs'
+    settings.network_path = '/home/wyp/project/SOITrack-main/output/test/networks'    # Where tracking networks are stored.
+    settings.nfs_path = '/home/wyp/project/SOITrack-main/data/nfs'
     settings.otb_path = '/mnt/first/hushiyu/SOT/OTB/data'
-    settings.prj_dir = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack'
-    settings.result_plot_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/output/test/result_plots'
-    settings.results_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/output/test/tracking_results'    # Where to store tracking results
-    settings.save_dir = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/output'
-    settings.segmentation_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/output/test/segmentation_results'
-    settings.tc128_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/TC128'
+
+    settings.segmentation_path = '/home/wyp/project/SOITrack-main/output/test/segmentation_results'
+    settings.tc128_path = '/home/wyp/project/SOITrack-main/data/TC128'
     settings.tn_packed_results_path = ''
-    settings.tnl2k_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/tnl2k'
+    settings.tnl2k_path = '/home/wyp/project/SOITrack-main/data/tnl2k'
     settings.tpl_path = ''
     settings.trackingnet_path = '/mnt/second/wangyipei/trackingnet'
-    settings.uav_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/uav'
-    settings.vot18_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/vot2018'
-    settings.vot22_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/vot2022'
-    settings.vot_path = '/seu_nvme/home/luxiaobo/230248984/code/SOITrack/data/VOT2019'
+    settings.uav_path = '/home/wyp/project/SOITrack-main/data/uav'
+    settings.vot18_path = '/home/wyp/project/SOITrack-main/data/vot2018'
+    settings.vot22_path = '/home/wyp/project/SOITrack-main/data/vot2022'
+    settings.vot_path = '/home/wyp/project/SOITrack-main/data/VOT2019'
     settings.youtubevos_dir = ''
+
+    settings.prj_dir = '/home/wyp/project/SOITrack-main'
+    settings.result_plot_path = '/home/wyp/project/SOITrack-main/output/test/result_plots'
+    settings.results_path = '/home/wyp/project/SOITrack-main/output/test/tracking_results'    # Where to store tracking results
+    settings.save_dir = '/home/wyp/project/SOITrack-main/output'
+    settings.soi_path = '/home/wyp/project/SOITrack-main/output/test/soi_results'
+    settings.soi_save_dir = '/home/wyp/project/SOITrack-main/output/test/soi_tracking_results'
+    settings.soi_online_save_dir = '/home/wyp/project/SOITrack-main/output/test/soi_online_tracking_results'
+    settings.soi_vis_dir = '/home/wyp/project/SOITrack-main/output/test/soi_vis'
 
     return settings
 

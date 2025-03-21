@@ -33,7 +33,7 @@ class ODTrack(BaseTracker):
 
         # for debug
         self.debug = params.debug
-        self.use_visdom = params.debug
+        self.use_visdom = params.debug == 2  # wyp visdom
         self.frame_id = 0
         if self.debug:
             if not self.use_visdom:
@@ -107,19 +107,20 @@ class ODTrack(BaseTracker):
         # Baseline: Take the mean of all pred boxes as the final result
         pred_box = (pred_boxes.mean(dim=0) * self.params.search_size / resize_factor).tolist()  # (cx, cy, w, h) [0,1]
         # get the final box result
+        pre_state = self.state
         self.state = clip_box(self.map_box_back(pred_box, resize_factor), H, W, margin=10)
 
         # save score map  wyp
         all_scoremap_boxes = self.network.box_head.cal_bbox_for_all_scores(response, out_dict['size_map'], out_dict['offset_map'])  # 1,4,576
         all_scoremap_boxes = all_scoremap_boxes.view(1, 4, 24, 24) * self.params.search_size / resize_factor  # 放缩 
-        all_scoremap_boxes = self.map_box_back_batch(all_scoremap_boxes, resize_factor)  # 映射回原图的框
-        all_scoremap_boxes = clip_box_batch(all_scoremap_boxes, H, W, margin=10)  # torch.Size([1, 4, 24, 24])
-        self.distractor_dataset_data = dict(score_map=pred_score_map,
+        all_state = self.map_box_back_batch(all_scoremap_boxes, resize_factor, pre_state)  # 映射回原图的框
+        all_state = clip_box_batch(all_state, H, W, margin=10)  # torch.Size([1, 4, 24, 24])
+        self.distractor_dataset_data = dict(score_map=response,
                                     # sample_pos=sample_pos[scale_ind, :],
                                     sample_scale=resize_factor,
                                     search_area_box=search_box, 
                                     x_dict=x_patch_arr,
-                                    all_scoremap_boxes=all_scoremap_boxes
+                                    all_scoremap_boxes=all_state
                                     )
 
         # --------- save memory frames and masks ---------
@@ -215,11 +216,11 @@ class ODTrack(BaseTracker):
         cy_real = cy + (cy_prev - half_side)
         return [cx_real - 0.5 * w, cy_real - 0.5 * h, w, h]
 
-    def map_box_back_batch(self, pred_box: torch.Tensor, resize_factor: float):
+    def map_box_back_batch(self, pred_box: torch.Tensor, resize_factor: float, pre_state):
         """
         输入 pred_box 可以为 (1, 4, 24, 24) 或 (1, 4, 576)
         """
-        cx_prev, cy_prev = self.state[0] + 0.5 * self.state[2], self.state[1] + 0.5 * self.state[3]
+        cx_prev, cy_prev = pre_state[0] + 0.5 * pre_state[2], pre_state[1] + 0.5 * pre_state[3]
 
         # 适配不同输入维度
         if pred_box.ndim == 4:  # 形状 (1, 4, 24, 24)
@@ -244,14 +245,6 @@ class ODTrack(BaseTracker):
 
         return mapped_box
 
-
-    # def map_box_back_batch(self, pred_box: torch.Tensor, resize_factor: float):
-    #     cx_prev, cy_prev = self.state[0] + 0.5 * self.state[2], self.state[1] + 0.5 * self.state[3]
-    #     cx, cy, w, h = pred_box.unbind(-1) # (N,4) --> (N,)
-    #     half_side = 0.5 * self.params.search_size / resize_factor
-    #     cx_real = cx + (cx_prev - half_side)
-    #     cy_real = cy + (cy_prev - half_side)
-    #     return torch.stack([cx_real - 0.5 * w, cy_real - 0.5 * h, w, h], dim=-1)
 
     def add_hook(self):
         conv_features, enc_attn_weights, dec_attn_weights = [], [], []

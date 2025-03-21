@@ -28,7 +28,7 @@ def parameters(yaml_name: str, run_id=None):
     #     params.checkpoint = os.path.join(save_dir, "checkpoints/train/odtrack/%s/ODTrack_ep%04d.pth.tar" %
     #                                     (yaml_name, run_id))
     
-    params.checkpoint = '/seu_share/home/luxiaobo/230248984/models/Base-Fulldata-300ep/ODTrack_ep0300.pth.tar'
+    params.checkpoint = '/home/wyp/project/SOITrack-main/Base-Fulldata-300ep/ODTrack_ep0300.pth.tar'
 
     # whether to save boxes from all queries
     params.save_all_boxes = False

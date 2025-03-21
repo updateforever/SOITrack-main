@@ -11,7 +11,7 @@ dataset_name = 'lasot' # lasot_extension_subset
 
 
 trackers.extend(trackerlist(name='odtrack', parameter_name='baseline', dataset_name=dataset_name,
-                            run_ids=300, display_name='odtrack'))
+                            run_ids=300, display_name='odtrack', run_soi=3))
 
 # For VOT evaluate
 dataset = get_dataset(dataset_name)
