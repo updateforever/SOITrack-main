@@ -677,14 +677,15 @@ class ExperimentLaSOT(object):
         seq_name = self.dataset.seq_names[seq_index]
         img_files, anno = self.dataset[seq_index]
 
-        # print(f"Processing Sequence {seq_index + 1}/{len(self.dataset)}: {seq_name}...")
+        print(f"Processing Sequence {seq_index + 1}/{len(self.dataset)}: {seq_name}...")
         logger.info(f"Processing Sequence {seq_index + 1}/{len(self.dataset)}: {seq_name}...")
 
         # 提取关键字参数
-        save_dir = kwargs.get("save_dir", False)
+        # save_dir = kwargs.get("save_dir", False)
         visualize = kwargs.get("visualize", False)
         run_mask = kwargs.get("run_mask", False)
         run_soi = kwargs.get("run_soi", False)
+        online = kwargs.get("run_mask_online", False)
         threshold = kwargs.get("threshold", 0.25)  # 默认阈值为0.25
         # 构建结果保存路径
         result_dir = self.result_dir_masked if run_mask else self.result_dir
@@ -692,33 +693,37 @@ class ExperimentLaSOT(object):
         
         mask_info = None
         if run_mask:
-            # 计算 mask 数据存储目录  TODO 多次的话怎么合理保存和读取
-            mask_jsonl_path = os.path.join(self.mask_info_dir, f"{seq_name}_masked_info.jsonl")
-
-            if os.path.exists(mask_jsonl_path):  # 如果 JSONL 文件存在
-                mask_info = []  # 初始化 mask 信息存储列表
-                with open(mask_jsonl_path, "r") as f:
-                    for line in f:  # 逐行读取 JSONL 文件
-                        try:
-                            mask_info.append(json.loads(line.strip()))  # 解析 JSON 并添加到列表
-                        except json.JSONDecodeError:
-                            logger.error(f" Invalid JSON line in {mask_jsonl_path}, skipping...")
-                logger.info(f" Loaded {len(mask_info)} mask records for {seq_name}.")
+            if online:
+                pass  # TODO: 处理在线 mask 逻辑
             else:
-                mask_info = None  # 若未找到，设置为空
-                logger.info(f" No mask_info found for {seq_name}, proceeding without mask.")
+                # **计算 mask 数据存储目录**
+                mask_jsonl_path = os.path.join(self.mask_info_dir, f"{seq_name}_masked_info.jsonl")
+                # **确保 mask 信息文件存在**
+                assert os.path.exists(mask_jsonl_path), f"Error: Mask info file {mask_jsonl_path} not found!"
+                if os.path.exists(mask_jsonl_path):  # 如果 JSONL 文件存在
+                    mask_info = []  # 初始化 mask 信息存储列表
+                    with open(mask_jsonl_path, "r") as f:
+                        for line in f:  # 逐行读取 JSONL 文件
+                            try:
+                                mask_info.append(json.loads(line.strip()))  # 解析 JSON 并添加到列表
+                            except json.JSONDecodeError:
+                                logger.error(f" Invalid JSON line in {mask_jsonl_path}, skipping...")
+                    logger.info(f" Loaded {len(mask_info)} mask records for {seq_name}.")
+                else:
+                    mask_info = None  # 若未找到，设置为空
+                    logger.info(f" No mask_info found for {seq_name}, proceeding without mask.")
 
-            # **检查 TXT 文件是否存在**
-            record_exists = os.path.exists(record_file)
-            # **如果 TXT 文件存在，跳过处理**
-            if record_exists and run_mask:
-                logger.info(f"  Found valid TXT results for run_mask, skipping {seq_name}")
-                return
+                # **检查 TXT 文件是否存在**
+                record_exists = os.path.exists(record_file)
+                # **如果 TXT 文件存在，跳过处理**
+                if record_exists and run_mask:
+                    logger.info(f"  Found valid TXT results for run_mask, skipping {seq_name}")
+                    return
         else:
             # **检查 TXT 文件是否存在**
             record_exists = os.path.exists(record_file)
             # **检查 JSONL 文件是否存在，并且行数是否匹配 anno**
-            jsonl_file = os.path.join(self.mask_info_dir, f"{seq_name}_masked_info.jsonl")  # JSONL 文件
+            jsonl_file = os.path.join(self.mask_info_dir, f"{seq_name}_mask_info.jsonl")  # JSONL 文件
             jsonl_exists = os.path.exists(jsonl_file)
             jsonl_valid = False
 
@@ -738,7 +743,7 @@ class ExperimentLaSOT(object):
             if record_exists and jsonl_valid and run_soi:
                 logger.info(f"  Found valid TXT & JSONL results, skipping {seq_name}")
                 return
-            elif record_exists and run_soi is True:
+            elif record_exists and run_soi is False:  # 正常运行的判定
                 logger.info(f"  Found valid TXT results, skipping {seq_name}")
                 return
 
@@ -748,6 +753,7 @@ class ExperimentLaSOT(object):
 
         if run_soi:
             logger.info(f"Using `track_and_filter_candidates` for sequence: {seq_name}")
+            print(f"Using `track_and_filter_candidates` for sequence: {seq_name}")
             save_path = os.path.join(self.result_dir, seq_name)
             # ======== #
             # soi run  track and filter
@@ -767,6 +773,7 @@ class ExperimentLaSOT(object):
             # normal run & mask run
             # ======== #
             logger.info(f"Using `track` for sequence: {seq_name}")
+            print(f"Using `track` for sequence: {seq_name}")
             # track
             boxes, times = tracker.track(
                 seq_name, img_files, anno, logger, visualize=visualize, mask_info=mask_info, 
@@ -777,6 +784,7 @@ class ExperimentLaSOT(object):
             self._record(record_file, boxes, times)
             
         logger.info(f"  Sequence {seq_name} completed.")
+        print(f"  Sequence {seq_name} completed.")
 
 
     def _record(self, record_file, boxes, times):
@@ -815,21 +823,11 @@ class ExperimentLaSOT(object):
         if not os.path.isdir(record_dir):
             os.makedirs(record_dir, exist_ok=True)
 
-        # **尝试保存文件，最多重试 max_retries 次**
-        for attempt in range(max_retries):
-            try:
-                np.savetxt(record_file, boxes, fmt="%.3f", delimiter=",")
-                if os.path.exists(record_file):
-                    logger.info(f"✅ 结果已成功保存: {record_file}")
-                    return
-            except Exception as e:
-                logger.warning(f"⚠️ 记录失败 (尝试 {attempt + 1}/{max_retries})，错误: {e}")
+        np.savetxt(record_file, boxes, fmt="%.3f", delimiter=",")
+        if os.path.exists(record_file):
+            logger.info(f"✅ 结果已成功保存: {record_file}")
+            return
 
-            # **等待后重试**
-            time.sleep(retry_delay)
-
-        # **最终失败，打印错误日志**
-        logger.error(f"❌ 结果记录失败，文件未能成功写入: {record_file}")
 
     def run_soi(
         self, tracker, threshold=0.25, track_vis=False, heatmap_vis=False, masked=True

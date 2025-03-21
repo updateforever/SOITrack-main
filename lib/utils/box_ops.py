@@ -158,28 +158,6 @@ def clip_box(box: list, H, W, margin=0):
     return [x1, y1, w, h]
 
 
-# def clip_box_batch(boxes: list, H, W, margin=0):
-#     clipped_boxes = []
-#     for box in boxes:
-#         x1, y1, w, h = box
-#         x2, y2 = x1 + w, y1 + h
-        
-#         # Clip the box coordinates to ensure it is within the image boundaries with margin consideration
-#         x1 = min(max(0, x1), W-margin)
-#         x2 = min(max(margin, x2), W)
-#         y1 = min(max(0, y1), H-margin)
-#         y2 = min(max(margin, y2), H)
-        
-#         # Ensure width and height are not smaller than the margin
-#         w = max(margin, x2 - x1)
-#         h = max(margin, y2 - y1)
-        
-#         # Append the clipped box to the result list
-#         clipped_boxes.append([x1, y1, w, h])
-    
-#     return clipped_boxes
-
-
 def clip_box_batch(boxes: torch.Tensor, H: int, W: int, margin: int = 0):
     """
     输入:

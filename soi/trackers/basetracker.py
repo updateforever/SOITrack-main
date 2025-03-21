@@ -101,10 +101,10 @@ class Tracker(object):
                 times[f] = self._stop_timing()
 
                 # **设置日志间隔**
-                log_interval = 100
-                if f % log_interval == 0 or f == frame_num - 1:
-                    logger.info(f"{seq_name} {self.name} Tracking {f}/{frame_num - 1} {str(frame_box)}")
-
+                # log_interval = 100
+                # if f % log_interval == 0 or f == frame_num - 1:
+                #     logger.info(f"{seq_name} {self.name} Tracking {f}/{frame_num - 1} {str(frame_box)}")
+                logger.info(f"{seq_name} {self.name} Tracking {f}/{frame_num - 1} {str(frame_box)}")
                 # **可视化或保存结果**
                 if save_img and f % 2 == 0:
                     frame_disp = visualize_tracking(seq_name, f, image, frame_box, anno[f, :], img_resolution)
@@ -164,6 +164,7 @@ class Tracker(object):
                 log_interval = 100  # 设定日志间隔（每 50 帧打印一次）
                 if f % log_interval == 0 or f == frame_num - 1:  # 每 `log_interval` 帧打印一次，确保最后一帧一定打印
                     logger.info(f"{seq_name} {self.name} Tracking {f}/{frame_num - 1} {str(frame_box)}")
+                print(f"{seq_name} {self.name} Tracking {f}/{frame_num - 1} {str(frame_box)}")
                 # 更新当前帧的候选物体得分
                 candidate_num[f] = frame_candidate_data["tg_num"]
 
@@ -175,7 +176,7 @@ class Tracker(object):
 
                 if masked:
                     process_masked_images(seq_name, image, anno[f, :], frame_candidate_data, track_result, mask_info_dir, f, save_masked_img)
-
+                    print("masked")
             # 可选：启用按键中断（例如按'q'退出）
             # key = cv.waitKey(1)
             # if key == ord('q'):

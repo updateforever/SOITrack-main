@@ -83,15 +83,11 @@ def find_local_maxima_v1(
 
     # 4. 根据阈值类型筛选局部极大值
     if threshold_type == "basic":
-        peak_mask = (scores == upsampled_scores_max) & (
-            scores >= th
-        )  # 直接根据阈值筛选
+        # 直接根据阈值筛选
+        peak_mask = (scores == upsampled_scores_max) & (scores >= th)  
     elif threshold_type == "alpha":
-        peak_mask = (
-            (scores == upsampled_scores_max)
-            & (scores >= th)
-            & (scores > alpha * max_score)
-        )  # 按最大得分比例筛选
+        # 按最大得分比例筛选
+        peak_mask = ((scores == upsampled_scores_max) & (scores >= th) & (scores > alpha * max_score))  
     elif threshold_type == "debug":
         peak_mask = (scores == upsampled_scores_max) & (scores > alpha * max_score)
         # peak_mask = ((scores == upsampled_scores_max) & (scores > alpha * max_score)) | (scores >= th)  # 为了可视化debug  或操作（odtrack为啥一上来就没有高分）
@@ -101,9 +97,7 @@ def find_local_maxima_v1(
         )
 
     # 5. 提取局部极大值的坐标和得分
-    coords = torch.nonzero(
-        peak_mask, as_tuple=False
-    )  # 返回局部极大值的坐标 torch.Size([n, 4])
+    coords = torch.nonzero(peak_mask, as_tuple=False)  # 返回局部极大值的坐标 torch.Size([n, 4])
     intensities = scores[peak_mask]  # 提取对应的得分
 
     # 将 y 和 x 转换为展平后的索引
@@ -669,15 +663,89 @@ def mask_image_with_boxes(
         ]
 
     # 3) 如果给定了 debug_save_path，则保存对比图
-    if debug_save_path is not None and len(mask_boxes) is not None:
+    if debug_save_path is not None and len(mask_boxes) > 0:
         # 左边原图，右边Mask后图
         vis = np.hstack((image, masked_frame))
         os.makedirs(os.path.dirname(debug_save_path), exist_ok=True)
         cv2.imwrite(debug_save_path, vis)
-        print(f"[DEBUG] Saved debug comparison to {debug_save_path}")
+        # print(f"[DEBUG] Saved debug comparison to {debug_save_path}")
 
     return masked_frame
 
+
+
+def mask_image_with_boxes_online(
+    image: np.ndarray,
+    mask_boxes: list,
+    gt_coord: dict = None,
+    fill_color: tuple = (0, 0, 0),
+    debug_save_path: str = None,
+) -> np.ndarray:
+    """
+    对图像进行遮挡: 先将 mask_boxes 对应区域填充为 fill_color，
+    然后再把 gt_coord 区域恢复为原图像素，以防 GT 被误遮挡。
+
+    参数:
+    ----
+    image : np.ndarray
+        原始图像 (H x W x 3)。
+    mask_boxes : list of dict
+        干扰框列表，每个框包含 {"x1", "y1", "x2", "y2"}。
+    gt_coord : dict
+        GT 框坐标，如 {"x1":..., "y1":..., "x2":..., "y2":...}。
+        如果为 None，则表示不做 GT 恢复。
+    fill_color : tuple
+        遮挡颜色，如 (0,0,0)。
+    debug_save_path : str
+        如果不为空，则将原图和Mask后图拼接对比并保存到此路径 (适合在服务器上调试)。
+
+    返回:
+    ----
+    masked_frame : np.ndarray
+        先遮挡、后恢复 GT 的最终图像。
+    """
+    masked_frame = image.copy()
+
+    # 1) 先把干扰框全部填充为 fill_color
+    for box in mask_boxes:
+        x1, y1, x2, y2 = box["x1"], box["y1"], box["x2"], box["y2"]
+        # 做坐标越界检查
+        x1_clamp = max(0, min(x1, masked_frame.shape[1]))
+        x2_clamp = max(0, min(x2, masked_frame.shape[1]))
+        y1_clamp = max(0, min(y1, masked_frame.shape[0]))
+        y2_clamp = max(0, min(y2, masked_frame.shape[0]))
+
+        masked_frame[y1_clamp:y2_clamp, x1_clamp:x2_clamp] = fill_color
+
+    # 2) 再恢复 GT 区域（如果有 gt_coord）
+    if gt_coord is not None:
+        gx1, gy1 = gt_coord["x1"], gt_coord["y1"]
+        gx2, gy2 = gt_coord["x2"], gt_coord["y2"]
+
+        gx1_clamp = max(0, min(gx1, masked_frame.shape[1]))
+        gx2_clamp = max(0, min(gx2, masked_frame.shape[1]))
+        gy1_clamp = max(0, min(gy1, masked_frame.shape[0]))
+        gy2_clamp = max(0, min(gy2, masked_frame.shape[0]))
+
+        masked_frame[gy1_clamp:gy2_clamp, gx1_clamp:gx2_clamp] = image[
+            gy1_clamp:gy2_clamp, gx1_clamp:gx2_clamp
+        ]
+
+    # 3) 如果给定了 debug_save_path，则保存对比图
+    if debug_save_path is not None and len(mask_boxes) > 0:
+        # 左边原图，右边Mask后图
+        vis = np.hstack((image, masked_frame))
+        os.makedirs(os.path.dirname(debug_save_path), exist_ok=True)
+        cv2.imwrite(debug_save_path, cv2.cvtColor(vis, cv2.COLOR_RGB2BGR))
+        # cv2.cvtColor(vis, cv2.COLOR_RGB2BGR)
+        # print(f"[DEBUG] Saved debug comparison to {debug_save_path}")
+
+    return masked_frame
+
+
+def file_exists(file_path):
+    """检查指定文件是否存在"""
+    return os.path.exists(file_path)
 
 # ===============================
 # 推理阶段示例调用

@@ -12,8 +12,7 @@ import torch
 from soi.trackers import TrackerODTrack
 from soi.local import EnvironmentSettings
 from soi.utils.analyze_soi_ratios import analyze_retio
-
-
+import gc
 import sys
 import logging
 
@@ -64,11 +63,6 @@ def run_single_sequence_wrapper(experiment, seq_idx, tracker, kwargs):
     logger = setup_logger(worker_id, single_thread=single_thread)
     logger.info(f"线程 {worker_id} 任务 {seq_idx} 开始")
 
-    # **多线程模式下，重定向 stdout/stderr 到日志文件**
-    if not single_thread:
-        sys.stdout = open(f"logs/worker_{worker_id}_stdout.log", "w")
-        sys.stderr = sys.stdout
-
     try:
         num_gpu = torch.cuda.device_count()  # 获取 GPU 数量
         gpu_id = worker_id % num_gpu if num_gpu > 0 else 0  # **防止 GPU 数量为 0**
@@ -80,11 +74,9 @@ def run_single_sequence_wrapper(experiment, seq_idx, tracker, kwargs):
         # **运行单个序列的实验，并传递 `logger`**
         experiment.run_single_sequence(seq_idx, tracker, logger=logger, **kwargs)
         logger.info(f"线程 {worker_id} 任务 {seq_idx} 完成")
+
     except Exception as e:
         logger.error(f"线程 {worker_id} 任务 {seq_idx} 失败: {e}")
-    finally:
-        if not single_thread:
-            sys.stdout.close()  # 关闭日志文件
 
 
 def choose_tracker(name):
@@ -104,32 +96,6 @@ def get_list_file(dataset, save_dir, subsets):
         return os.path.join(save_dir, "../data/got10k", subsets, "all-list.txt")
     else:
         return None
-
-def setup_parser():
-    """
-    设置命令行参数解析器。
-    允许用户选择追踪器、数据集、运行模式等。
-    """
-    parser = argparse.ArgumentParser(description="运行目标跟踪器，支持多种数据集和设置。")
-    parser.add_argument("--tracker", type=str, default="odtrack", help="选择追踪器名称")
-    parser.add_argument("--dataset", type=str, default="lasot", choices=["lasot", "otb", "vot", "videocube"], help="选择数据集名称")
-    parser.add_argument("--subsets", type=str, default="test", help="子数据集名称")
-
-    parser.add_argument("--save_dir", type=str, default="nips25/", help="结果保存路径")
-    
-    parser.add_argument("--cuda", type=str, default="0", help="CUDA设备编号")
-
-    parser.add_argument("--run_soi", action="store_true", help="是否启用SOI统计")
-    parser.add_argument("--visual", action="store_true", help="是否可视化结果")
-    parser.add_argument("--run_mask", action="store_true", help="是否运行mask模式")
-
-    parser.add_argument("--report", action="store_true", help="是否生成报告")
-    parser.add_argument("--masked_report", action="store_true", help="测试masked后的序列跟踪性能")
-    
-    parser.add_argument("--mode", type=str, choices=["single", "multi"], default="single", help="运行模式：单线程(single)或多线程(multi)")
-    parser.add_argument("--threshold", type=float, default=0.25, help="是否使用SOI阈值参数")
-    parser.add_argument("--num_threads", type=int, default=2, help="多线程模式下的线程数")
-    return parser
 
 def main():
     """
@@ -163,18 +129,19 @@ def main():
         print("运行模式：单线程")
         for seq_idx in range(len(experiment.dataset)):
             run_single_sequence_wrapper(experiment, seq_idx, args.tracker, {
-                "save_dir": save_dir,
                 "visualize": args.visual,
                 "run_mask": args.run_mask,
                 "mask_info": getattr(args, "mask_info", None),
                 "run_soi": args.run_soi,
                 "threshold": args.threshold,
             })
+            gc.collect()  # 手动回收垃圾，释放内存
     else:
         print("运行模式：多线程")
         multiprocessing.set_start_method("spawn", force=True)  # 确保 spawn 方式初始化
         
         num_threads = args.num_threads if args.num_threads else multiprocessing.cpu_count()
+        print("使用线程数：", num_threads)
         trackers = [args.tracker]
 
         param_list = [
@@ -193,18 +160,19 @@ def main():
         print(f"共生成 {len(param_list)} 个任务，使用 {num_threads} 个线程进行并行处理。")
         
         with mp.Pool(processes=num_threads) as pool:
-            try:
-                pool.starmap(run_single_sequence_wrapper, param_list)
-                pool.close()  # 关闭进程池，防止新的任务提交
-                pool.join()   # 等待所有子进程完成
-            except KeyboardInterrupt:
-                print("检测到用户终止 (Ctrl+C)，正在清理进程...")
-                pool.terminate()  # 强制终止所有进程
-                pool.join()  # 确保所有进程完全关闭
-            except Exception as e:
-                print(f"[Error] 进程池运行时发生异常: {e}")
-                pool.terminate()
-                pool.join()
+            pool.starmap(run_single_sequence_wrapper, param_list)
+            # try:
+            #     pool.starmap(run_single_sequence_wrapper, param_list)
+            #     pool.close()  # 关闭进程池，防止新的任务提交
+            #     pool.join()   # 等待所有子进程完成
+            # except KeyboardInterrupt:
+            #     print("检测到用户终止 (Ctrl+C)，正在清理进程...")
+            #     pool.terminate()  # 强制终止所有进程
+            #     pool.join()  # 确保所有进程完全关闭
+            # except Exception as e:
+            #     print(f"[Error] 进程池运行时发生异常: {e}")
+            #     pool.terminate()
+            #     pool.join()
     
     total_time = timedelta(seconds=(time.time() - start_time))
     print(f"追踪完成，总耗时: {total_time}")
@@ -221,8 +189,36 @@ def main():
             experiment.report(tracker_names)
         print("报告生成完成")
 
+def setup_parser():
+    """
+    设置命令行参数解析器。
+    允许用户选择追踪器、数据集、运行模式等。
+    """
+    parser = argparse.ArgumentParser(description="运行目标跟踪器，支持多种数据集和设置。")
+    parser.add_argument("--tracker", type=str, default="odtrack", help="选择追踪器名称")
+    parser.add_argument("--dataset", type=str, default="lasot", choices=["lasot", "otb", "vot", "videocube"], help="选择数据集名称")
+    parser.add_argument("--subsets", type=str, default="test", help="子数据集名称")
+
+    parser.add_argument("--save_dir", type=str, default="nips25/", help="结果保存路径")
+    
+    parser.add_argument("--cuda", type=str, default="0", help="CUDA设备编号")
+
+    parser.add_argument("--run_soi", action="store_true", help="是否启用SOI统计")
+    parser.add_argument("--visual", action="store_true", help="是否可视化结果")
+    parser.add_argument("--run_mask", action="store_true", help="是否运行mask模式")
+    parser.add_argument("--run_mask_online", action="store_true", help="是否启用在线相似物体交互模式")
+
+    parser.add_argument("--report", action="store_true", help="是否生成报告")
+    parser.add_argument("--masked_report", action="store_true", help="测试masked后的序列跟踪性能")
+    
+    parser.add_argument("--mode", type=str, choices=["single", "multi"], default="single", help="运行模式：单线程(single)或多线程(multi)")
+    parser.add_argument("--threshold", type=float, default=0.25, help="是否使用SOI阈值参数")
+    parser.add_argument("--num_threads", type=int, default=2, help="多线程模式下的线程数")
+    return parser
+
+
 if __name__ == "__main__":
     main()
 
 
-# python run_dist.py --run_soi --mode multi --num_threads 3
+# python run_dist.py --run_soi --mode multi --num_threads 2
